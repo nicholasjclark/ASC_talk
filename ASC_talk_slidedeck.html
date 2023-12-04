@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Time series analysis and forecasting with Bayesian Dynamic Generalized Additive Models</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Nicholas Clark" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/panelset/panelset.css" rel="stylesheet" />
+    <script src="libs/panelset/panelset.js"></script>
+    <link href="libs/animate.css/animate.xaringan.css" rel="stylesheet" />
+    <script src="libs/clipboard/clipboard.min.js"></script>
+    <link href="libs/xaringanExtra-clipboard/xaringanExtra-clipboard.css" rel="stylesheet" />
+    <script src="libs/xaringanExtra-clipboard/xaringanExtra-clipboard.js"></script>
+    <script>window.xaringanExtraClipboard(null, {"button":"Copy Code","success":"Copied!","error":"Press Ctrl+C to Copy"})</script>
+    <link href="libs/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="libs/tile-view/tile-view.js"></script>
+    <script src="libs/kePrint/kePrint.js"></script>
+    <link href="libs/lightable/lightable.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" type="text/css" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: inverse, middle, left, my-title-slide, title-slide
+
+.title[
+# Time series analysis and forecasting with Bayesian Dynamic Generalized Additive Models
+]
+.author[
+### Nicholas Clark
+]
+.institute[
+### School of Veterinary Science, University of Queensland, Australia
+]
+.date[
+### 1300 Wednesday 13th December, 2023
+]
+
+---
+
+class: middle center
+
+
+<style>.panelset{--panel-tab-foreground: #8F2727;--panel-tab-inactive-opacity: 0.8;}</style>
+
+
+
+
+
+
+
+
+
+class: animated fadeIn
+&lt;body&gt;&lt;div id="pan"&gt;&lt;/div&gt;&lt;/body&gt;
+
+---
+class: animated fadeIn
+background-image: url('./resources/smooth_only.gif')
+## GAMs use splines ...
+
+
+
+---
+
+background-image: url('./ASC_talk_slidedeck_files/figure-html/basis-functions-1.svg')
+## ... made of basis functions
+
+
+---
+
+
+background-image: url('./resources/basis-functions-weights-1.svg')
+## Weighting basis functions ...
+
+---
+
+background-image: url('./resources/basis_weights.gif')
+## ... gives a spline `\((f(x))\)`
+
+---
+
+background-image: url('./resources/smooth_to_data.gif')
+## Penalize `\(f"(x)\)` to learn weights
+
+---
+
+class: full-size
+
+## Easy to fit in <svg aria-hidden="true" role="img" viewBox="0 0 581 512" style="height:1em;width:1.13em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:steelblue;overflow:visible;position:relative;"><path d="M581 226.6C581 119.1 450.9 32 290.5 32S0 119.1 0 226.6C0 322.4 103.3 402 239.4 418.1V480h99.1v-61.5c24.3-2.7 47.6-7.4 69.4-13.9L448 480h112l-67.4-113.7c54.5-35.4 88.4-84.9 88.4-139.7zm-466.8 14.5c0-73.5 98.9-133 220.8-133s211.9 40.7 211.9 133c0 50.1-26.5 85-70.3 106.4-2.4-1.6-4.7-2.9-6.4-3.7-10.2-5.2-27.8-10.5-27.8-10.5s86.6-6.4 86.6-92.7-90.6-87.9-90.6-87.9h-199V361c-74.1-21.5-125.2-67.1-125.2-119.9zm225.1 38.3v-55.6c57.8 0 87.8-6.8 87.8 27.3 0 36.5-38.2 28.3-87.8 28.3zm-.9 72.5H365c10.8 0 18.9 11.7 24 19.2-16.1 1.9-33 2.8-50.6 2.9v-22.1z"/></svg>
+&lt;img align="center" width="306" height="464" src="resources/gam_book.jpg" style="float: right; 
+  margin: 10px;"&gt;
+`$$\mathbb{E}(\boldsymbol{Y_t}|\boldsymbol{X_t})=g^{-1}(\alpha + \sum_{j=1}^{J}f(x_{jt}))$$`
+
+&lt;br/&gt;
+Where: 
+- `\(g^{-1}\)` is the inverse of the link function
+- `\({\alpha}\)` is the intercept
+- `\(f(x)\)` are potentially nonlinear functions of the `\(J\)` predictors
+
+
+
+---
+
+background-image: url('./ASC_talk_slidedeck_files/figure-html/complexity-1.svg')
+
+---
+
+## What's the catch?
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-1-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## A spline of `time`
+
+```r
+library(mgcv)
+*model &lt;- gam(y ~ s(time, k = 20, bs = 'bs', m = 2),
+                data = data,
+                family = gaussian())
+```
+
+A B-spline (`bs = 'bs'`) with `m = 2` sets the penalty on the second derivative
+
+---
+
+## Hindcasts <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm177.6 62.1C192.8 334.5 218.8 352 256 352s63.2-17.5 78.4-33.9c9-9.7 24.2-10.4 33.9-1.4s10.4 24.2 1.4 33.9c-22 23.8-60 49.4-113.6 49.4s-91.7-25.5-113.6-49.4c-9-9.7-8.4-24.9 1.4-33.9s24.9-8.4 33.9 1.4zm40-89.3l0 0 0 0-.2-.2c-.2-.2-.4-.5-.7-.9c-.6-.8-1.6-2-2.8-3.4c-2.5-2.8-6-6.6-10.2-10.3c-8.8-7.8-18.8-14-27.7-14s-18.9 6.2-27.7 14c-4.2 3.7-7.7 7.5-10.2 10.3c-1.2 1.4-2.2 2.6-2.8 3.4c-.3 .4-.6 .7-.7 .9l-.2 .2 0 0 0 0 0 0c-2.1 2.8-5.7 3.9-8.9 2.8s-5.5-4.1-5.5-7.6c0-17.9 6.7-35.6 16.6-48.8c9.8-13 23.9-23.2 39.4-23.2s29.6 10.2 39.4 23.2c9.9 13.2 16.6 30.9 16.6 48.8c0 3.4-2.2 6.5-5.5 7.6s-6.9 0-8.9-2.8l0 0 0 0zm160 0l0 0-.2-.2c-.2-.2-.4-.5-.7-.9c-.6-.8-1.6-2-2.8-3.4c-2.5-2.8-6-6.6-10.2-10.3c-8.8-7.8-18.8-14-27.7-14s-18.9 6.2-27.7 14c-4.2 3.7-7.7 7.5-10.2 10.3c-1.2 1.4-2.2 2.6-2.8 3.4c-.3 .4-.6 .7-.7 .9l-.2 .2 0 0 0 0 0 0c-2.1 2.8-5.7 3.9-8.9 2.8s-5.5-4.1-5.5-7.6c0-17.9 6.7-35.6 16.6-48.8c9.8-13 23.9-23.2 39.4-23.2s29.6 10.2 39.4 23.2c9.9 13.2 16.6 30.9 16.6 48.8c0 3.4-2.2 6.5-5.5 7.6s-6.9 0-8.9-2.8l0 0 0 0 0 0z"/></svg>
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-3-1.svg" style="display: block; margin: auto;" /&gt;
+
+```
+## No non-missing values in test_observations; cannot calculate forecast score
+```
+
+---
+
+## Extrapolate 2-steps ahead <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm177.6 62.1C192.8 334.5 218.8 352 256 352s63.2-17.5 78.4-33.9c9-9.7 24.2-10.4 33.9-1.4s10.4 24.2 1.4 33.9c-22 23.8-60 49.4-113.6 49.4s-91.7-25.5-113.6-49.4c-9-9.7-8.4-24.9 1.4-33.9s24.9-8.4 33.9 1.4zM144.4 208a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm192-32a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-4-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## 5-steps ahead <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zM174.6 384.1c-4.5 12.5-18.2 18.9-30.7 14.4s-18.9-18.2-14.4-30.7C146.9 319.4 198.9 288 256 288s109.1 31.4 126.6 79.9c4.5 12.5-2 26.2-14.4 30.7s-26.2-2-30.7-14.4C328.2 358.5 297.2 336 256 336s-72.2 22.5-81.4 48.1zM144.4 208a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm192-32a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-5-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## 20-steps ahead <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M175.9 448c-35-.1-65.5-22.6-76-54.6C67.6 356.8 48 308.7 48 256C48 141.1 141.1 48 256 48s208 93.1 208 208s-93.1 208-208 208c-28.4 0-55.5-5.7-80.1-16zM0 256a256 256 0 1 0 512 0A256 256 0 1 0 0 256zM128 369c0 26 21.5 47 48 47s48-21 48-47c0-20-28.4-60.4-41.6-77.7c-3.2-4.4-9.6-4.4-12.8 0C156.6 308.6 128 349 128 369zm128-65c-13.3 0-24 10.7-24 24s10.7 24 24 24c30.7 0 58.7 11.5 80 30.6c9.9 8.8 25 8 33.9-1.9s8-25-1.9-33.9C338.3 320.2 299 304 256 304zm47.6-96a32 32 0 1 0 64 0 32 32 0 1 0 -64 0zm-128 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64z"/></svg>
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-6-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+background-image: url('./resources/basis_weights.gif')
+## Basis functions &amp;#8680; local knowledge
+
+---
+## Basis functions &amp;#8680; local knowledge
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-7-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Basis functions &amp;#8680; local knowledge
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-8-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Basis functions &amp;#8680; local knowledge
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-9-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+## Forecasts <svg aria-hidden="true" role="img" viewBox="0 0 512 512" style="height:1em;width:1em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:currentColor;overflow:visible;position:relative;"><path d="M400 406.1V288c0-13.3-10.7-24-24-24s-24 10.7-24 24V440.6c-28.7 15-61.4 23.4-96 23.4s-67.3-8.5-96-23.4V288c0-13.3-10.7-24-24-24s-24 10.7-24 24V406.1C72.6 368.2 48 315 48 256C48 141.1 141.1 48 256 48s208 93.1 208 208c0 59-24.6 112.2-64 150.1zM256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM159.6 220c10.6 0 19.9 3.8 25.4 9.7c7.6 8.1 20.2 8.5 28.3 .9s8.5-20.2 .9-28.3C199.7 186.8 179 180 159.6 180s-40.1 6.8-54.6 22.3c-7.6 8.1-7.1 20.7 .9 28.3s20.7 7.1 28.3-.9c5.5-5.8 14.8-9.7 25.4-9.7zm166.6 9.7c5.5-5.8 14.8-9.7 25.4-9.7s19.9 3.8 25.4 9.7c7.6 8.1 20.2 8.5 28.3 .9s8.5-20.2 .9-28.3C391.7 186.8 371 180 351.6 180s-40.1 6.8-54.6 22.3c-7.6 8.1-7.1 20.7 .9 28.3s20.7 7.1 28.3-.9zM208 320v32c0 26.5 21.5 48 48 48s48-21.5 48-48V320c0-26.5-21.5-48-48-48s-48 21.5-48 48z"/></svg>
+
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-10-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+## We need *global* knowledge
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-11-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## We need *global* knowledge
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-12-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## We need *global* knowledge
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-13-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+## We need *global* knowledge
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-14-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Dynamic GAMs
+
+`$$\mathbb{E}(\boldsymbol{Y_t}|\boldsymbol{X_t})=g^{-1}(\alpha + \sum_{j=1}^{J}f(x_{jt}) + z_t)$$`
+
+&lt;br/&gt;
+Where: 
+- `\(g^{-1}\)` is the inverse of the link function
+- `\({\alpha}\)` is the intercept
+- `\(f(x)\)` are potentially nonlinear functions of the `\(J\)` predictors
+- `\(z_t\)` is a .emphasize[*latent dynamic process*]
+
+---
+
+## Modelling with the [`mvgam` 📦](https://github.com/nicholasjclark/mvgam/tree/master)
+
+Bayesian framework to fit Dynamic GLMs and Dynamic GAMs
+- Hierarchical intercepts, slopes and smooths
+- Latent dynamic processes
+- State-Space models with measurement error
+
+Built off the [`mgcv` 📦](https://cran.r-project.org/web/packages/mgcv/index.html) to construct penalized smoothing splines
+
+Convenient and familiar <svg aria-hidden="true" role="img" viewBox="0 0 581 512" style="height:1em;width:1.13em;vertical-align:-0.125em;margin-left:auto;margin-right:auto;font-size:inherit;fill:steelblue;overflow:visible;position:relative;"><path d="M581 226.6C581 119.1 450.9 32 290.5 32S0 119.1 0 226.6C0 322.4 103.3 402 239.4 418.1V480h99.1v-61.5c24.3-2.7 47.6-7.4 69.4-13.9L448 480h112l-67.4-113.7c54.5-35.4 88.4-84.9 88.4-139.7zm-466.8 14.5c0-73.5 98.9-133 220.8-133s211.9 40.7 211.9 133c0 50.1-26.5 85-70.3 106.4-2.4-1.6-4.7-2.9-6.4-3.7-10.2-5.2-27.8-10.5-27.8-10.5s86.6-6.4 86.6-92.7-90.6-87.9-90.6-87.9h-199V361c-74.1-21.5-125.2-67.1-125.2-119.9zm225.1 38.3v-55.6c57.8 0 87.8-6.8 87.8 27.3 0 36.5-38.2 28.3-87.8 28.3zm-.9 72.5H365c10.8 0 18.9 11.7 24 19.2-16.1 1.9-33 2.8-50.6 2.9v-22.1z"/></svg> formula interface
+
+Uni- or multivariate series from a range of response distributions 
+
+Uses [Stan](https://mc-stan.org/) for efficient Hamiltonian Monte Carlo sampling
+
+---
+
+## Observation families
+
+
+`gaussian()`, `student-t()` &amp;#8680; real values in `\((-\infty, \infty)\)`   
+ 
+`lognormal()`, `Gamma()` &amp;#8680; positive real values in `\([0, \infty)\)`   
+
+`betar()`  &amp;#8680; real values (proportional) in `\([0,1]\)`  
+
+`poisson()`, `nb()` &amp;#8680; non-negative integers in `\((0,1,2,...)\)`  
+
+---
+
+## Extended predictor effects
+
+
+`s()` &amp;#8680; Smoothing spline of one or more covariates
+
+`s(bs = 're')` &amp;#8680; Hierarchical slopes or intercepts
+
+`te(), ti(), t2()` &amp;#8680; Tensor product smoothing spline of two or more covariates   
+
+`gp()` &amp;#8680; Gaussian Process function (with squared exponential kernel) of one covariate  
+
+`dynamic()` &amp;#8680; Time-varying effect of one covariate                             
+
+---
+
+class: middle center
+### We can fit models that include random effects, nonlinear effects and complex multidimensional smooth functions. All these effects can operate .emphasize[*on both process and observation models*]
+&lt;br&gt;
+### Can incorporate unobserved temporal dynamics; no need to regress the outcome on past values or resort to transformations
+&lt;br&gt;
+### What kinds of dynamic processes are available in the `mvgam` 📦?
+
+
+---
+
+## Piecewise linear...
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-15-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## ...or logistic with upper saturation
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-16-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+## RW or ARMA(p = 1-3, q = 0-1)
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-17-1.svg" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+## Gaussian Process...
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-18-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+## ...where length scale  &amp;#8680; *memory*
+&lt;img src="ASC_talk_slidedeck_files/figure-html/unnamed-chunk-19-1.svg" style="display: block; margin: auto;" /&gt;
+
+---
+
+background-image: url('./resources/VAR.svg')
+background-size: contain
+## VAR1 &amp;#8680; Granger causality
+
+---
+
+background-image: url('./resources/df_with_series.gif')
+## Factors &amp;#8680; induced correlations
+---
+
+## Example of the interface
+
+
+```r
+model &lt;- mvgam(
+  formula = y ~ 
+    s(series, bs = 're') + 
+    s(x0, series, bs = 're') +
+    x1 +
+    gp(x2) +
+    te(x3, x4, bs = c('cr', 'tp')),
+  data = data,
+  family = poisson(),
+  trend_model = AR(p = 1, ma = TRUE, cor = TRUE),
+  burnin = 500,
+  samples = 500,
+  chains = 4,
+  parallel = TRUE)
+```
+
+---
+
+## Example data (long format)
+
+&lt;table class=" lightable-minimal" style='font-family: "Trebuchet MS", verdana, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;'&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; y &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; series &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; time &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+## Response (`NA`s allowed)
+
+&lt;table class=" lightable-minimal" style='font-family: "Trebuchet MS", verdana, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;'&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; y &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; series &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; time &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+## Series indicator (as `factor`)
+
+&lt;table class=" lightable-minimal" style='font-family: "Trebuchet MS", verdana, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;'&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; y &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; series &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; time &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+## Time indicator
+
+&lt;table class=" lightable-minimal" style='font-family: "Trebuchet MS", verdana, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;'&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; y &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; series &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; time &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+
+## Any other predictors
+
+&lt;table class=" lightable-minimal" style='font-family: "Trebuchet MS", verdana, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;'&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; y &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; series &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; time &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; x0 &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; x1 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; x2 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; x3 &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; x4 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.38 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; A &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.20 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.18 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.72 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.71 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; A &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -2.67 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.02 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.67 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.05 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; B &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.33 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.12 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.50 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; NA &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.77 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; B &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.65 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.86 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.49 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.29 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; A &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.25 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.18 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.82 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 0 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.34 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; A &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.15 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 2.12 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.20 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.38 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; B &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.81 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.33 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -1.15 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; series_4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.32 &lt;/td&gt;
+   &lt;td style="text-align:left;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; B &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 0.22 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; -0.72 &lt;/td&gt;
+   &lt;td style="text-align:right;font-weight: bold;background-color: rgba(81, 36, 122, 0.13) !important;"&gt; 1.36 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+---
+## Produce all `Stan` code and objects
+
+```r
+code(model)
+```
+.small[
+
+```
+## // Stan model code generated by package mvgam
+## functions {
+##   /* Spectral density function of a Gaussian process
+##   * with squared exponential covariance kernel
+##   * Args:
+##   *   l_gp: numeric eigenvalues of an SPD GP
+##   *   alpha_gp: marginal SD parameter
+##   *   rho_gp: length-scale parameter
+##   * Returns:
+##   *   numeric values of the GP function evaluated at l_gp
+##   */
+##   vector spd_cov_exp_quad(data vector l_gp, real alpha_gp, real rho_gp) {
+##     int NB = size(l_gp);
+##     vector[NB] out;
+##     real constant = square(alpha_gp) * (sqrt(2 * pi()) * rho_gp);
+##     real neg_half_lscale2 = -0.5 * square(rho_gp);
+##     for (m in 1 : NB) {
+##       out[m] = constant * exp(neg_half_lscale2 * square(l_gp[m]));
+##     }
+##     return out;
+##   }
+## }
+## data {
+##   int&lt;lower=0&gt; total_obs; // total number of observations
+##   int&lt;lower=0&gt; n; // number of timepoints per series
+##   int&lt;lower=0&gt; n_sp; // number of smoothing parameters
+##   int&lt;lower=0&gt; n_series; // number of series
+##   int&lt;lower=0&gt; num_basis; // total number of basis coefficients
+##   vector[num_basis] zero; // prior locations for basis coefficients
+##   matrix[total_obs, num_basis] X; // mgcv GAM design matrix
+##   array[n, n_series] int&lt;lower=0&gt; ytimes; // time-ordered matrix (which col in X belongs to each [time, series] observation?)
+##   int&lt;lower=1&gt; k_gp_x2_; // basis functions for approximate gp
+##   vector[k_gp_x2_] l_gp_x2_; // approximate gp eigenvalues
+##   array[10] int b_idx_gp_x2_; // gp basis coefficient indices
+##   matrix[24, 72] S2; // mgcv smooth penalty matrix S2
+##   int&lt;lower=0&gt; n_nonmissing; // number of nonmissing observations
+##   array[n_nonmissing] int&lt;lower=0&gt; flat_ys; // flattened nonmissing observations
+##   matrix[n_nonmissing, num_basis] flat_xs; // X values for nonmissing observations
+##   array[n_nonmissing] int&lt;lower=0&gt; obs_ind; // indices of nonmissing observations
+## }
+## transformed data {
+##   vector[n_series] trend_zeros = rep_vector(0.0, n_series);
+## }
+## parameters {
+##   // raw basis coefficients
+##   vector[num_basis] b_raw;
+##   
+##   // gp term sd parameters
+##   real&lt;lower=0&gt; alpha_gp_x2_;
+##   
+##   // gp term length scale parameters
+##   real&lt;lower=0&gt; rho_gp_x2_;
+##   
+##   // gp term latent variables
+##   vector[k_gp_x2_] z_gp_x2_;
+##   
+##   // random effect variances
+##   vector&lt;lower=0&gt;[2] sigma_raw;
+##   
+##   // random effect means
+##   vector[2] mu_raw;
+##   
+##   // latent trend AR1 terms
+##   vector&lt;lower=-1.5, upper=1.5&gt;[n_series] ar1;
+##   
+##   // latent trend variance parameters
+##   vector&lt;lower=0&gt;[n_series] sigma;
+##   cholesky_factor_corr[n_series] L_Omega;
+##   
+##   // ma coefficients
+##   matrix&lt;lower=-1, upper=1&gt;[n_series, n_series] theta;
+##   
+##   // dynamic error parameters
+##   array[n] vector[n_series] error;
+##   
+##   // smoothing parameters
+##   vector&lt;lower=0&gt;[n_sp] lambda;
+## }
+## transformed parameters {
+##   array[n] vector[n_series] trend_raw;
+##   matrix[n, n_series] trend;
+##   array[n] vector[n_series] epsilon;
+##   
+##   // LKJ form of covariance matrix
+##   matrix[n_series, n_series] L_Sigma;
+##   
+##   // computed error covariance matrix
+##   cov_matrix[n_series] Sigma;
+##   
+##   // basis coefficients
+##   vector[num_basis] b;
+##   b[1 : 36] = b_raw[1 : 36];
+##   b[37 : 40] = mu_raw[1] + b_raw[37 : 40] * sigma_raw[1];
+##   b[41 : 44] = mu_raw[2] + b_raw[41 : 44] * sigma_raw[2];
+##   
+##   // derived latent states
+##   trend_raw[1] = error[1];
+##   epsilon[1] = error[1];
+##   for (i in 2 : n) {
+##     // lagged error ma process
+##     epsilon[i] = theta * error[i - 1];
+##     
+##     // full ARMA process
+##     trend_raw[i] = ar1 .* trend_raw[i - 1] + epsilon[i] + error[i];
+##   }
+##   b[b_idx_gp_x2_] = sqrt(spd_cov_exp_quad(l_gp_x2_, alpha_gp_x2_, rho_gp_x2_))
+##                     .* z_gp_x2_;
+##   L_Sigma = diag_pre_multiply(sigma, L_Omega);
+##   Sigma = multiply_lower_tri_self_transpose(L_Sigma);
+##   for (i in 1 : n) {
+##     trend[i, 1 : n_series] = to_row_vector(trend_raw[i]);
+##   }
+## }
+## model {
+##   // prior for random effect population variances
+##   sigma_raw ~ student_t(3, 0, 2.5);
+##   
+##   // prior for random effect population means
+##   mu_raw ~ std_normal();
+##   
+##   // prior for (Intercept)...
+##   b_raw[1] ~ student_t(3, 0, 2.5);
+##   
+##   // prior for x1B...
+##   b_raw[2] ~ student_t(3, 0, 2);
+##   
+##   // prior for gp(x2)...
+##   z_gp_x2_ ~ std_normal();
+##   alpha_gp_x2_ ~ student_t(3, 0, 2.5);
+##   rho_gp_x2_ ~ inv_gamma(1.494197, 0.056607);
+##   b_raw[b_idx_gp_x2_] ~ std_normal();
+##   
+##   // prior for te(x3,x4)...
+##   b_raw[13 : 36] ~ multi_normal_prec(zero[13 : 36],
+##                                      S2[1 : 24, 1 : 24] * lambda[3]
+##                                      + S2[1 : 24, 25 : 48] * lambda[4]
+##                                      + S2[1 : 24, 49 : 72] * lambda[5]);
+##   
+##   // prior (non-centred) for s(series)...
+##   b_raw[37 : 40] ~ std_normal();
+##   
+##   // prior (non-centred) for s(x0,series)...
+##   b_raw[41 : 44] ~ std_normal();
+##   
+##   // priors for AR parameters
+##   ar1 ~ std_normal();
+##   
+##   // priors for smoothing parameters
+##   lambda ~ normal(5, 30);
+##   
+##   // priors for latent trend variance parameters
+##   sigma ~ student_t(3, 0, 2.5);
+##   
+##   // contemporaneous errors
+##   L_Omega ~ lkj_corr_cholesky(2);
+##   for (i in 1 : n) {
+##     error[i] ~ multi_normal_cholesky(trend_zeros, L_Sigma);
+##   }
+##   
+##   // ma coefficients
+##   for (i in 1 : n_series) {
+##     for (j in 1 : n_series) {
+##       if (i != j) 
+##         theta[i, j] ~ normal(0, 0.2);
+##     }
+##   }
+##   {
+##     // likelihood functions
+##     vector[n_nonmissing] flat_trends;
+##     flat_trends = to_vector(trend)[obs_ind];
+##     flat_ys ~ poisson_log_glm(append_col(flat_xs, flat_trends), 0.0,
+##                               append_row(b, 1.0));
+##   }
+## }
+## generated quantities {
+##   vector[total_obs] eta;
+##   matrix[n, n_series] mus;
+##   vector[n_sp] rho;
+##   vector[n_series] tau;
+##   array[n, n_series] int ypred;
+##   rho = log(lambda);
+##   for (s in 1 : n_series) {
+##     tau[s] = pow(sigma[s], -2.0);
+##   }
+##   
+##   // posterior predictions
+##   eta = X * b;
+##   for (s in 1 : n_series) {
+##     mus[1 : n, s] = eta[ytimes[1 : n, s]] + trend[1 : n, s];
+##     ypred[1 : n, s] = poisson_log_rng(mus[1 : n, s]);
+##   }
+## }
+```
+]
+
+---
+## Workflow in `mvgam` 📦
+
+
+Fit models that can include splines, GPs, and multivariate dynamic processes to sets of time series; use informative priors for effective regularization
+
+Use posterior predictive checks and Randomized Quantile (Dunn-Smyth) residuals to assess model failures
+
+Use `marginaleffects` 📦 to generate interpretable (and reportable) model predictions
+
+Produce probabilistic forecasts
+
+Evaluate forecasts from using proper scoring rules                           
+---
+
+## More resources
+Vignette &amp;#8680; [Overview of the package](https://nicholasjclark.github.io/mvgam/articles/mvgam_overview.html) 
+
+Vignette &amp;#8680;  [Formatting data for use in `mvgam`](https://nicholasjclark.github.io/mvgam/articles/data_in_mvgam.html)
+
+Vignette &amp;#8680; [Shared latent process models](https://nicholasjclark.github.io/mvgam/articles/shared_states.html) 
+
+Vignette &amp;#8680; [Time-varying effects](https://nicholasjclark.github.io/mvgam/articles/time_varying_effects.html)
+
+Vignette &amp;#8680; [Multivariate State-Space models](https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html)
+
+Motivating publication &amp;#8680; Clark &amp; Wells 2023 [*Methods in Ecology and Evolution*](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.13974)
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script src="macros.js"></script>
+<script>var slideshow = remark.create({
+"navigation": {
+"scroll": false
+},
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
