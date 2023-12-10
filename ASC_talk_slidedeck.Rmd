@@ -1,8 +1,8 @@
 ---
-title: "Time series analysis and forecasting with Bayesian Dynamic Generalized Additive Models"
+title: "Time series modeling with Bayesian Dynamic Generalized Additive Models"
 institute: "School of Veterinary Science, University of Queensland, Australia"
 author: "Nicholas Clark"
-date: "1300 Wednesday 13th December, 2023"
+date: "Wednesday 13th December, 2023"
 output:
   xaringan::moon_reader:
     css: ['default','https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css', 'slides.css']
@@ -226,7 +226,7 @@ class: animated fadeIn
 ---
 class: animated fadeIn
 background-image: url('./resources/smooth_only.gif')
-## GAMs use splines ...
+## GAMs use splines $(f(x))$ ...
 
 ```{r basis-functions, fig.height=4.6875, fig.width = 7.5, echo=FALSE,message=FALSE,warning=FALSE,fig.show='hide'}
 set.seed(7)
@@ -256,44 +256,8 @@ ggplot(basis_funs,
 
 ---
 
-background-image: url('./ASC_talk_slidedeck_files/figure-html/basis-functions-1.svg')
-## ... made of basis functions
-
-```{r basis-functions-weights, fig.height=4.6875, fig.width = 7.5, echo=FALSE,message=FALSE,warning=FALSE,fig.show='hide'}
-set.seed(7)
-N <- 400
-y <- mvgam::sim_mvgam(T = N, prop_missing = 0,
-                      prop_train = 1,
-                      family = gaussian(),
-                      n_series = 1,
-                      trend_model = 'GP',
-                      trend_rel = 0.95)$data_train$y
-x <- 1:N
-data <- data.frame(x = x,
-                   y = rnorm(n = N, mean = y, sd = 0.75))
-theme_set(theme_classic(base_size = 17, base_family = 'serif'))
-basis_funs <- basis(gam(y ~ s(x, bs = 'cr', k = 12) - 1, 
-                    data = data))
-ggplot(basis_funs,
-       aes(x = x, y = value, colour = bf)) +
-  geom_borderline(linewidth=1.5, bordercolour = "white") +
-  scale_color_viridis(discrete = TRUE) +
-  theme(legend.position = 'none',
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(colour = "black", size = 1)) +
-  ylab('f(Time)') + xlab('Time') + 
-  scale_y_continuous(breaks = c(0, 1))
-```
----
-
-
-background-image: url('./resources/basis-functions-weights-1.svg')
-## Weighting basis functions ...
-
----
-
 background-image: url('./resources/basis_weights.gif')
-## ... gives a spline $(f(x))$
+## ...made of weighted basis functions
 
 ---
 
@@ -378,46 +342,6 @@ plot(hindcast(splinemod), xlab = 'time', ylab = 'Predictions')
 
 ---
 
-## Extrapolate 2-steps ahead `r fontawesome::fa("face-smile")`
-
-```{r echo = FALSE}
-mypar()
-plot_mvgam_smooth(splinemod, 
-                  smooth = 's(time)',
-                  newdata = data.frame(time = 1:(max(gausdat$data_train$time)+2)))
-abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
-```
-
----
-
-## 5-steps ahead `r fontawesome::fa("face-frown")`
-
-```{r echo = FALSE}
-mypar()
-plot_mvgam_smooth(splinemod, 
-                  smooth = 's(time)',
-                  newdata = data.frame(time = 1:(max(gausdat$data_train$time)+5)))
-abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
-```
-
----
-
-## 20-steps ahead `r fontawesome::fa("face-sad-tear")`
-
-```{r echo = FALSE}
-mypar()
-plot_mvgam_smooth(splinemod, 
-                  smooth = 's(time)',
-                  newdata = data.frame(time = 1:(max(gausdat$data_train$time)+20)))
-abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
-```
-
----
-
-background-image: url('./resources/basis_weights.gif')
-## Basis functions &#8680; local knowledge
-
----
 ## Basis functions &#8680; local knowledge
 
 ```{r echo = FALSE}
@@ -428,21 +352,6 @@ plot_mvgam_smooth(splinemod,
                   newdata = data.frame(time = 1:(max(gausdat$data_train$time)+20)),
                   realisations = TRUE,
                   n_realisations = 2)
-abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
-```
-
----
-
-## Basis functions &#8680; local knowledge
-
-```{r echo = FALSE}
-mypar()
-set.seed(100)
-plot_mvgam_smooth(splinemod, 
-                  smooth = 's(time)',
-                  newdata = data.frame(time = 1:(max(gausdat$data_train$time)+20)),
-                  realisations = TRUE,
-                  n_realisations = 8)
 abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
 ```
 
@@ -468,37 +377,6 @@ abline(v = max(gausdat$data_train$time), lwd = 2, lty = 'dashed')
 mypar()
 plot(splinemod, type = 'forecast', newdata = gausdat$data_test, xlab = 'time',
      ylab = 'Predictions')
-```
-
----
-## We need *global* knowledge
-```{r echo = FALSE}
-mypar()
-set.seed(100)
-plot(gpmod, type = 'trend', 
-     newdata = gausdat$data_test, 
-     xlab = 'time',
-     ylab = 'Partial effect',
-     realisations = TRUE,
-     n_realisations = 1)
-rug(1:max(gausdat$data_train$time),
-    lwd = 1.75, ticksize = 0.025, col = "#A25050")
-```
-
----
-
-## We need *global* knowledge
-```{r echo = FALSE}
-mypar()
-set.seed(100)
-plot(gpmod, type = 'trend', 
-     newdata = gausdat$data_test, 
-     xlab = 'time',
-     ylab = 'Partial effect',
-     realisations = TRUE,
-     n_realisations = 5)
-rug(1:max(gausdat$data_train$time),
-    lwd = 1.75, ticksize = 0.025, col = "#A25050")
 ```
 
 ---
@@ -549,44 +427,16 @@ Bayesian framework to fit Dynamic GLMs and Dynamic GAMs
 
 Built off the [`mgcv` 📦](https://cran.r-project.org/web/packages/mgcv/index.html) to construct penalized smoothing splines
 
-Convenient and familiar `r fontawesome::fa("r-project", fill = "steelblue")` formula interface
+Familiar `r fontawesome::fa("r-project", fill = "steelblue")` formula interface
 
 Uni- or multivariate series from a range of response distributions 
 
-Uses [Stan](https://mc-stan.org/) for efficient Hamiltonian Monte Carlo sampling
-
----
-
-## Observation families
-
-
-`gaussian()`, `student-t()` &#8680; real values in $(-\infty, \infty)$   
- 
-`lognormal()`, `Gamma()` &#8680; positive real values in $[0, \infty)$   
-
-`betar()`  &#8680; real values (proportional) in $[0,1]$  
-
-`poisson()`, `nb()` &#8680; non-negative integers in $(0,1,2,...)$  
-
----
-
-## Extended predictor effects
-
-
-`s()` &#8680; Smoothing spline of one or more covariates
-
-`s(bs = 're')` &#8680; Hierarchical slopes or intercepts
-
-`te(), ti(), t2()` &#8680; Tensor product smoothing spline of two or more covariates   
-
-`gp()` &#8680; Gaussian Process function (with squared exponential kernel) of one covariate  
-
-`dynamic()` &#8680; Time-varying effect of one covariate                             
+Uses [Stan](https://mc-stan.org/) for ADVI, Laplace or full Hamiltonian Monte Carlo
 
 ---
 
 class: middle center
-### We can fit models that include random effects, nonlinear effects and complex multidimensional smooth functions. All these effects can operate .emphasize[*on both process and observation models*]
+### We can fit models that include random effects, nonlinear effects, time-varying effects and complex multidimensional smooth functions. All these effects can operate .emphasize[*on both process and observation models*]
 <br>
 ### Can incorporate unobserved temporal dynamics; no need to regress the outcome on past values or resort to transformations
 <br>
@@ -802,90 +652,11 @@ model <- mvgam(
   data = data,
   family = poisson(),
   trend_model = AR(p = 1, ma = TRUE, cor = TRUE),
+  algorithm = 'sampling',
   burnin = 500,
   samples = 500,
   chains = 4,
   parallel = TRUE)
-```
-
----
-
-## Example data (long format)
-
-```{r echo=FALSE}
-set.seed(100)
-data <- sim_mvgam(n_series = 4, T = 24, prop_missing = 0.3)
-data$data_train$year <- NULL
-data$data_train$season <- NULL
-head(data$data_train, 8) %>%
-  kbl() %>%
-  kable_minimal(full_width = FALSE)
-```
-
----
-
-## Response (`NA`s allowed)
-
-```{r echo=FALSE}
-set.seed(100)
-data <- sim_mvgam(n_series = 4, T = 24, prop_missing = 0.3)
-data$data_train$year <- NULL
-data$data_train$season <- NULL
-head(data$data_train, 8) %>%
-  kbl() %>%
-  kable_minimal(full_width = FALSE) %>%
-  column_spec(1, bold = T, background = '#51247A20')
-```
-
----
-
-## Series indicator (as `factor`)
-
-```{r echo=FALSE}
-set.seed(100)
-data <- sim_mvgam(n_series = 4, T = 24, prop_missing = 0.3)
-data$data_train$year <- NULL
-data$data_train$season <- NULL
-head(data$data_train, 8) %>%
-  kbl() %>%
-  kable_minimal(full_width = FALSE) %>%
-  column_spec(2, bold = T, background = '#51247A20')
-```
-
----
-
-## Time indicator
-
-```{r echo=FALSE}
-set.seed(100)
-data <- sim_mvgam(n_series = 4, T = 24, prop_missing = 0.3)
-data$data_train$year <- NULL
-data$data_train$season <- NULL
-head(data$data_train, 8) %>%
-  kbl() %>%
-  kable_minimal(full_width = FALSE) %>%
-  column_spec(3, bold = T, background = '#51247A20')
-```
-
----
-
-## Any other predictors
-
-```{r echo=FALSE}
-set.seed(100)
-data <- sim_mvgam(n_series = 4, T = 24, prop_missing = 0.3)
-data$data_train$x0 <- round(rnorm(24), 2)
-data$data_train$x1 <- ifelse(
-  data$data_train$series %in% c('series_1', 'series_2'), 'A', 'B')
-data$data_train$x2 <- round(rnorm(24), 2)
-data$data_train$x3 <- round(rnorm(24), 2)
-data$data_train$x4 <- round(rnorm(24), 2)
-data$data_train$season <- NULL
-data$data_train$year <- NULL
-head(data$data_train, 8) %>%
-  kbl() %>%
-  kable_minimal(full_width = FALSE) %>%
-  column_spec(4:8, bold = T, background = '#51247A20')
 ```
 
 ---
@@ -925,9 +696,9 @@ code(model)
 ## Workflow in `mvgam` 📦
 
 
-Fit models that can include splines, GPs, and multivariate dynamic processes to sets of time series; use informative priors for effective regularization
+Fit models with splines, GPs, and multivariate dynamic processes to sets of time series; use informative priors for effective regularization
 
-Use posterior predictive checks and Randomized Quantile (Dunn-Smyth) residuals to assess model failures
+Use posterior predictive checks and Randomized Quantile residuals to assess model failures
 
 Use `marginaleffects` 📦 to generate interpretable (and reportable) model predictions
 
@@ -937,9 +708,9 @@ Evaluate forecasts from using proper scoring rules
 ---
 
 ## More resources
-Vignette &#8680; [Overview of the package](https://nicholasjclark.github.io/mvgam/articles/mvgam_overview.html) 
+Cheatsheet &#8680; [Overview of `mvgam`](https://github.com/nicholasjclark/mvgam/raw/master/misc/mvgam_cheatsheet.pdf) 
 
-Vignette &#8680;  [Formatting data for use in `mvgam`](https://nicholasjclark.github.io/mvgam/articles/data_in_mvgam.html)
+Vignette &#8680; [Introduction to the package](https://nicholasjclark.github.io/mvgam/articles/mvgam_overview.html) 
 
 Vignette &#8680; [Shared latent process models](https://nicholasjclark.github.io/mvgam/articles/shared_states.html) 
 
@@ -948,3 +719,17 @@ Vignette &#8680; [Time-varying effects](https://nicholasjclark.github.io/mvgam/a
 Vignette &#8680; [Multivariate State-Space models](https://nicholasjclark.github.io/mvgam/articles/trend_formulas.html)
 
 Motivating publication &#8680; Clark & Wells 2023 [*Methods in Ecology and Evolution*](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.13974)
+
+---
+## Relevant links
+[`mvgam` 📦 website](https://nicholasjclark.github.io/mvgam/)
+
+[`r fontawesome::fa("fab fa-github", fill = "black")` nicholasjclark](https://github.com/nicholasjclark)
+
+[`r fontawesome::fa("fas fa-person-chalkboard", fill = "black")` slides for this talk](https://github.com/nicholasjclark/ASC_talk)
+
+[`r fontawesome::fa("fas fa-globe", fill = "black")` personal website](https://researchers.uq.edu.au/researcher/15140)
+
+`r fontawesome::fa("fas fa-envelope", fill = "black")` n.clark@uq.edu.au
+
+
